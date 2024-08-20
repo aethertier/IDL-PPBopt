@@ -21,6 +21,9 @@ classifiers = [
 	"Intended Audience :: Science/Research",
 ]
 
+[project.scripts]
+idlppbopt = "IDLPPBopt.__main__:main"
+
 [project.urls]
 Repository = "https://github.com/Aml-Hassan-Abd-El-hamid/IDL-PPBopt/tree/cuda-enabled"
 "Source Repository" = "https://github.com/Louchaofeng/IDL-PPBopt"
