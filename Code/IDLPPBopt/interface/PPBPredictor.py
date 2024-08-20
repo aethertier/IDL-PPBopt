@@ -1,5 +1,6 @@
+import os
 import copy
-from typing import List
+from typing import List, Union
 import numpy as np
 import pandas as pd
 from rdkit import Chem
@@ -17,7 +18,8 @@ from ..config import DEFAULT_MODEL_PATH
 
 class PPBPredictor:
 
-    BEST_MODEL_PATH = DEFAULT_MODEL_PATH
+    MODEL_PATH = DEFAULT_MODEL_PATH
+    MODEL_CLASS = Fingerprint
 
     def __init__(self, 
                  radius=2, 
@@ -50,7 +52,7 @@ class PPBPredictor:
         self.smiles_series = smiles_series
         self.smiles_features = smiles_features
 
-    def prepare_model(self):
+    def prepare_model(self, model_path: Union[str, os.PathLike]=None):
         '''Prepare the predictive model'''
         assert self.smiles_series is not None \
             and self.smiles_features is not None
@@ -58,7 +60,7 @@ class PPBPredictor:
         smile = self.smiles_series.iloc[:1]
         atm, bnd, atx, bdx, msk, smi2rdkit = get_smiles_array(smile, self.smiles_features)
         # Initialize model
-        model = Fingerprint(
+        model = self.MODEL_CLASS(
                     radius = self.radius,
                     T = self.T,
                     input_feature_dim = atm.shape[-1], 
@@ -68,7 +70,7 @@ class PPBPredictor:
                     p_dropout = self.p_dropout)
         model.cuda()
         # Transfer parameters from pretrained model
-        best_model = torch.load(self.BEST_MODEL_PATH)
+        best_model = torch.load(model_path or self.MODEL_PATH)
         best_model_wts = copy.deepcopy(best_model.state_dict())
         model.load_state_dict(best_model_wts)
         assert (best_model.align[0].weight == model.align[0].weight).all()
@@ -81,7 +83,7 @@ class PPBPredictor:
             and self.model is not None
         model = self.model
         model.eval()
-        y_pred = []
+        mol_predictions = []
         for i in range(0, len(self.smiles_series), batch_size):
             smiles_list = self.smiles_series.iloc[i:i+batch_size].values
             atm, bnd, atx, bdx, msk, smi2rdkit = get_smiles_array(smiles_list, self.smiles_features)
@@ -91,5 +93,6 @@ class PPBPredictor:
                 torch.cuda.LongTensor(atx),
                 torch.cuda.LongTensor(bdx),
                 torch.Tensor(msk))
-            y_pred.append(mol_prediction.data.squeeze().cpu().numpy())
-        return np.concatenate(y_pred)
+            mol_predictions.append(mol_prediction.data.squeeze().cpu().numpy())
+        return np.concatenate(mol_predictions)
+    
