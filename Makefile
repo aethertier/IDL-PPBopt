@@ -12,4 +12,4 @@ uninstall:
 	pip uninstall -y $(PACKAGE_NAME)
 
 clean:
-	rm -rf dist src/$(PACKAGE_NAME).egg-info
+	rm -rf dist Code/$(PACKAGE_NAME).egg-info
