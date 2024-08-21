@@ -96,3 +96,43 @@ class PPBPredictor:
             mol_predictions.append(mol_prediction.data.squeeze().cpu().numpy())
         return np.concatenate(mol_predictions)
     
+
+class PPBPredictorViz(PPBPredictor):
+
+    MODEL_PATH = DEFAULT_MODEL_PATH
+    MODEL_CLASS = Fingerprint_viz
+
+    # def __init__(self, ...):              <-- inherited from parent
+
+    # def load_smiles(self, ...):           <-- inherited from parent
+
+    # def prepare_model(self, ...):         <-- inherited from parent
+
+    def evaluate(self, *, batch_size=64):
+        '''Evaluate the SMILES given the model'''
+        assert self.smiles_series is not None \
+            and self.smiles_features is not None \
+            and self.model is not None
+        model = self.model
+        model.eval()
+        mol_predictions, mol_attnweights = [], []
+        for i in range(0, len(self.smiles_series), batch_size):
+            smiles_list = self.smiles_series.iloc[i:i+batch_size].values
+            # Original labels
+            #   x_atom, x_bonds, x_atom_index, x_bond_index, x_mask, smiles_to_rdkit_list
+            atm, bnd, atx, bdx, msk, smi2rdkit = get_smiles_array(smiles_list, self.smiles_features)
+            # Original labels
+            # mol_prediction_array, atom_feature_array, atom_weight_array, mol_feature_array, mol_feature_unbounded_array
+            _i, _ii, _iii, _iv, mol_weights, mol_pred = model(
+                torch.Tensor(atm),
+                torch.Tensor(bnd),
+                torch.cuda.LongTensor(atx),
+                torch.cuda.LongTensor(bdx),
+                torch.Tensor(msk))
+            mol_predictions.append(mol_pred.cpu().detach().squeeze().numpy())
+            mol_weights = next(mol_weights[t].cpu().detach().numpy() for t in range(self.T))
+            for smi, weigths in zip(smiles_list, mol_weights):
+                idx = np.argsort(smi2rdkit[smi])
+                mol_attnweights.append(weigths[idx].flatten())
+        mol_predictions = np.concatenate(mol_predictions)
+        return mol_predictions, mol_attnweights
