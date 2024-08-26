@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit.Chem	import rdDepictor
 from rdkit.Chem.Draw import	rdMolDraw2D
 
-from IDLPPBopt.utils import extract_privileged_substructures
+from IDLPPBopt.utils import find_privileged_substructures
 
 
 class AtomAttentionVisualizer:
@@ -39,7 +39,7 @@ class AtomAttentionVisualizer:
         if substructures is None:
             substructures = []
         elif isinstance(substructures, str) and substructures == "privileged":
-            substructures = extract_privileged_substructures(smiles, atom_weights)
+            substructures = find_privileged_substructures(smiles, atom_weights)
 
         # Define atom highlight colors
         norm = mpl_colors.Normalize(vmin=(self.vmin or np.min(atom_weights)), vmax=(self.vmax or np.max(atom_weights)*1.3))
